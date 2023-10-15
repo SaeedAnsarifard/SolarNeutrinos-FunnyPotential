@@ -1,39 +1,30 @@
 import numpy as np
-import matplotlib.pyplot as plt
-#from scipy import stats
-from scipy.interpolate import interp1d
-
-#from scipy.integrate import solve_ivp
-
 from scipy.optimize import curve_fit
 
 
-#plt.rcParams['text.usetex']=True
-#plt.style.use('classic')
+r_sun  = 6.96e10 #cm
+r_sun  = 3.53e21 #Mev^-1
+rsun_l = 6.96e8/1.5e11
 
-#plt.rcParams['font.size'] = 18
+#h_{bar}c : 1.97 10^{-11} Mev.cm
+hbarc  = 1.97
 
-#load_phi  = np.loadtxt('./bs2005agsopflux1.txt', unpack = True)
 
 def main(m,g,theta12):
+    #g in 10^{-30}
+    #m in R^{-1}
+    
     #Neutrino production point weight function :http://www.sns.ias.edu/~jnb/
-    load_phi   = np.loadtxt('./Solar_Standard_Model/bs2005agsopflux1.txt', unpack = True)
-    self.phi   = {'pp' : load_phi[5,:],
-                  'Be7': load_phi[10,:],
-                  'pep': load_phi[11,:],
-                  'B8' : load_phi[6,:]}
+    load_phi = np.loadtxt('./bs2005agsopflux1.txt', unpack = True)
+    phi      = {'pp' : load_phi[5,:],
+                'Be7': load_phi[10,:],
+                'pep': load_phi[11,:],
+                'B8' : load_phi[6,:]}
 
 
     
-    deltam12 = 7.5e-5
-    enu_s  = np.logspace(-1,1,100)
-    r_sun  = 6.96e10 #cm
-    r_sun  = 3.53e21 #Mev^-1
-    rsun_l = 6.96e8/1.5e11
-    
-    #h_{bar}c : 1.97 10^{-11} Mev.cm
-    hbarc = 1.97
-    
+    deltam12  = 1.
+    enu       = np.logspace(-1,np.log10(20),300)
     
     load_phi1 = np.loadtxt('./nele_bs05op.txt')
     #n(X) in 10^{25} cm^{-3}
@@ -43,22 +34,24 @@ def main(m,g,theta12):
    
     
     #V_eff in 10^{-18} MeV
-    x0     = np.logspace(-3,0,300)
-    gamma0 = np.lispace(0,180,100)
+    x0     = load_phi[0,:]
+    gamma0 = np.linspace(0,180,100)
     fx     = np.zeros(x0.shape)
-    v_eff  = np.zeros((enu_s.shape[0],x0.shape[0],gamma0.shape[0]))
-    thetam12 = np.zeros((enu_s.shape[0],x0.shape[0],gamma0.shape[0]))
-    survival_probablity_polar = np.zeros((enu_s.shape[0],x0.shape[0],gamma0.shape[0]))
+    alpha  = np.zeros((x0.shape[0],gamma0.shape[0]))
+    v_eff  = np.zeros((enu.shape[0],x0.shape[0],gamma0.shape[0]))
+    theta12m = np.zeros((enu.shape[0],x0.shape[0],gamma0.shape[0]))
+    survival_probablity_polar = np.zeros((enu.shape[0],x0.shape[0],gamma0.shape[0]))
     for i in range(x0.shape[0]):
         fx[i] = IntegralXthetaprime(x0[i],m,popt)
         for j in range(gamma0.shape[0]):
             alpha[i,j] = Alpha(x0[i],gamma0[j])
-            for enu,z in enumerate (enu_s):
-                v_eff[z,i,j] = 1.26*Nx(x0[i],*popt) + g*67.5*np.cos((alpha[i,j]+gamma0[j])*np.pi/180)*fx[i]/enu
-                thetam12[z,i,j] = ThetaM12(deltam12,enu,theta12,v_eff[z,i,j])
-                survival_probablity_polar[i,j] = np.cos(np.pi*theta12/180.)**2 * np.cos(np.pi*thetam12[z,i,j]/180.)**2 + np.sin(np.pi*theta12/180.)**2 * np.sin(np.pi*thetam12[z,i,j]/180.)**2
-    
-    return survival_probablity_polar
+            v_eff[:,i,j] = 1.26*Nx(x0[i],*popt) + g*67.5*np.cos((alpha[i,j]+gamma0[j])*np.pi/180)*fx[i]/enu
+            theta12m[:,i,j] = ThetaM12(deltam12,enu,theta12,v_eff[:,i,j])
+            survival_probablity_polar[:,i,j] = np.cos(np.pi*theta12/180.)**2 * np.cos(np.pi*theta12m[:,i,j]/180.)**2 + np.sin(np.pi*theta12/180.)**2 * np.sin(np.pi*theta12m[:,i,j]/180.)**2
+
+    survival_probablity_x0 = np.trapz(survival_probablity_polar,gamma0,axis=2)/180.
+    survival_probablity    = np.sum(survival_probablity_x0*phi['B8'],axis=1)
+    return enu,survival_probablity
     
 def Nx(x, a, b, c):
     return a * np.exp(-b * x**c) 
