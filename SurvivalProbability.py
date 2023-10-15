@@ -45,11 +45,11 @@ def main(m,g,theta12):
         fx[i] = IntegralXthetaprime(x0[i],m,popt)
         for j in range(gamma0.shape[0]):
             alpha[i,j] = Alpha(x0[i],gamma0[j])
-            v_eff[:,i,j] = 1.26*Nx(x0[i],*popt) + g*67.5*np.cos((alpha[i,j]+gamma0[j])*np.pi/180)*fx[i]/enu
+            v_eff[:,i,j] = 1.26*Nx(x0[i],*popt) + g*6.75*np.cos((alpha[i,j]+gamma0[j])*np.pi/180)*fx[i]/enu
             theta12m[:,i,j] = ThetaM12(deltam12,enu,theta12,v_eff[:,i,j])
             survival_probablity_polar[:,i,j] = np.cos(np.pi*theta12/180.)**2 * np.cos(np.pi*theta12m[:,i,j]/180.)**2 + np.sin(np.pi*theta12/180.)**2 * np.sin(np.pi*theta12m[:,i,j]/180.)**2
 
-    survival_probablity_x0 = np.trapz(survival_probablity_polar,gamma0,axis=2)/180.
+    survival_probablity_x0 = np.trapz(survival_probablity_polar*np.sin(np.pi*gamma0/180.),np.pi*gamma0/180.,axis=2)/2.
     survival_probablity    = np.sum(survival_probablity_x0*phi['B8'],axis=1)
     return enu,survival_probablity
     
